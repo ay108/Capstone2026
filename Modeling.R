@@ -34,10 +34,9 @@ MannKendall(df$rodent_rate)
 #tau = 0.0951, 2-sided pvalue =< 2.22e-16
 #statistically significant upward trend, but it's very weak (tau close to 0)
 par(mfrow = c(2, 2))
-#need to do log transformaiton for rodent_rate (bounded ebtween 0 and 1)
-plot(fit_final)          # residuals vs fitted, QQ plot, scale-location
-summary(fit_final)       # coefficients, p-values
-confint(fit_final)       # confidence intervals — most important for inference
+plot(fit_final)          
+summary(fit_final)      
+confint(fit_final)       
 library(betareg)
 #this dont look so good for 0 rodent rates
 #divded the problem into 2
