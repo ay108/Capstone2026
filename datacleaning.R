@@ -4,7 +4,7 @@ library(sinaplot)
 library(runner)
 df <- read.csv("/Users/ashleyyang/Desktop/DS Capstone/Week5/tmpwmdgd3ai.csv")
 colnames(df)
-View(df)
+# View(df)
 #only like 1% of violations are rodent violations
 #get rid of na's 
 df <- df %>%
@@ -16,20 +16,14 @@ table(df$rodent_violation_flag)
 #change the format to standard datetime to group by date
 df$date <- as.Date(as.POSIXct(df$resultdttm, format = "%Y-%m-%d %H:%M:%S", tz = "UTC"))
 
-#for some reason, this regular version is not working...
-# summary_by_date <- df %>%
-#   group_by(date) %>%
-#   summarize(
-#     count_rodent = sum(rodent_violation_flag),
-#     num_inspections = n_distinct(businessname)
-#   )
 summary_by_date <- df %>%
   dplyr::group_by(date) %>%
   dplyr::summarise(
-    count_rodent = sum(rodent_violation_flag, na.rm = TRUE),
-    num_inspections = n_distinct(businessname),
+    count_rodent = n_distinct(businessname[rodent_violation_flag == 1]),  # unique businesses WITH violation
+    num_inspections = n_distinct(businessname),                            # unique businesses inspected
     .groups = "drop"
-  )
+  ) %>%
+  mutate(rodent_rate = count_rodent / num_inspections)
 
 head(summary_by_date)
 #drop the dates with NA's in them
@@ -68,7 +62,6 @@ outliers
 #remove outliers?
 ####INQUIRY? should i log this? 
 #create a rate variable
-summary_by_date$rodent_rate <- summary_by_date$count_rodent/ summary_by_date$num_inspections
 tail(summary_by_date)
 summary_by_date %>%
   filter(num_inspections <= outlier_threshold)
@@ -121,7 +114,6 @@ full<-full[,c("date", "count_rodent", "num_inspections", "rodent_rate", "tmin","
 
 #but first, wanna model this...
 #i want rodent rate and date and 
-heatmap(full[,2:13])
 full$hot_day<-as.numeric(full$hot_day)
 full$heat_wave_start<-as.numeric(full$heat_wave_start)
 #now want to have the count per year, and also the rodent rate per year(averaged?)
@@ -153,18 +145,17 @@ corrplot(cor_matrix, method = "color", type = "upper",
          addCoef.col = "black", tl.col = "black",
          title = "Correlation with Rodent Rate",
          mar = c(0,0,1,0), )
-#really need to add a lag to explore if it is truly not correlated...
-#now want to do a mixed effects model
-library(lme4)
-
-
-model <- lmer(
-  rodent_rate ~ tmax + summer + hot_day + extreme_heat +
-    (1 | year) + (1 | month),
-  data = full
-)
 library(car)
-vif(lm(rodent_rate ~ temp + tmin + tmax + summer + hot_day + extreme_heat, data = full))
-vif(lm(rodent_rate ~ tmax + summer + hot_day + extreme_heat, data = full))#this is fine now!
+model <- lm(rodent_rate ~ tmin + tmax + temp+month+summer+hot_day+extreme_heat+year+heat_wave_start, data = full)
+vif(model)
+model <- lm(rodent_rate ~ date+tmax+extreme_heat+heat_wave_start, data = full)
+vif(model)#much better
+
+
+summary(model)
+#save full as a csv
+write.csv(full, "full.csv")
+
+
 
 

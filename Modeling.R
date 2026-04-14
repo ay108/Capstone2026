@@ -3,9 +3,7 @@
 library(tidyverse)
 library(nlme)
 df<-read_csv("full.csv")
-df$time_index <- 1:nrow(df)
-
-model <- lm(rodent_rate ~ time_index+tmax+hot_day+extreme_heat+heat_wave_start, data = df)
+model <- lm(rodent_rate ~ date+tmax+hot_day+extreme_heat+heat_wave_start, data = df)
 ljung_box_lm <- Box.test(residuals(model), lag = 12, type = "Ljung-Box")
 residuals_ols <- residuals(model)
 ljung_box_lm
@@ -41,23 +39,43 @@ library(betareg)
 #this dont look so good for 0 rodent rates
 #divded the problem into 2
 df$any_rodent <- as.integer(df$rodent_rate > 0)
-fit_part1 <- glm(any_rodent ~ time_index + tmax + hot_day + extreme_heat + heat_wave_start,
+fit_part1 <- glm(any_rodent ~ date + tmax + heat_wave_start,
                  data = df,
                  family = binomial(link = "logit"))
 
 summary(fit_part1)
 exp(coef(fit_part1))
+
+# Model 1: continuous heat only
+fit1 <- glm(any_rodent ~ date +heat_wave_start, 
+            data = df, family = binomial(link = "logit"))
+# Model 2: threshold effect
+fit2 <- glm(any_rodent ~ date + tmax +heat_wave_start , 
+            data = df, family = binomial(link = "logit"))
+
+# Model 3: extreme events only
+fit3 <- glm(any_rodent ~ date + tmax + extreme_heat + heat_wave_start, 
+            data = df,family = binomial(link = "logit"))
+
+AIC(fit1, fit2, fit3)
+#fit 2 appears to be the best
+
+summary(fit2)
+exp(coef(fit2))
+
+
+
 #violation occurs regardless of heat??
 library(betareg)
 
 #days with at least some violation
 df_nonzero <- df[df$rodent_rate > 0, ]
+df_nonzero$date_scaled <- scale(as.numeric(df_nonzero$date))
 
-fit_part2 <- betareg(rodent_rate ~ time_index + tmax + hot_day + 
-                       extreme_heat + heat_wave_start,
+fit_part2 <- betareg(rodent_rate ~ date_scaled + tmax + heat_wave_start,
                      data = df_nonzero)
-
 summary(fit_part2)
+
 
 
 
